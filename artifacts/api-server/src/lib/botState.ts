@@ -152,10 +152,11 @@ class BotStateManager {
     };
   }
 
-  getMemoryEntries(): Array<{ server: string; registered: boolean }> {
+  getMemoryEntries(): Array<{ server: string; registered: boolean; password: string }> {
     return Array.from(this.memory.values()).map((e) => ({
       server: e.server,
       registered: e.registered,
+      password: e.password,
     }));
   }
 

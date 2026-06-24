@@ -1,14 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, KeyRound, LogIn, UserPlus } from "lucide-react";
+import { Loader2, KeyRound, LogIn, UserPlus, Database } from "lucide-react";
 import {
   useConnectBot,
   useDisconnectBot,
   useGetBotStatus,
   getGetBotStatusQueryKey,
   useSendChat,
+  useGetMemory,
+  getGetMemoryQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -33,8 +35,24 @@ export default function ConfigPanel() {
   const disconnectMutation = useDisconnectBot();
   const sendChatMutation = useSendChat();
 
+  const { data: vault } = useGetMemory({
+    query: { queryKey: getGetMemoryQueryKey(), refetchInterval: 3000 },
+  });
+
   const [manualPw, setManualPw] = useState("");
   const [authFeedback, setAuthFeedback] = useState<string | null>(null);
+  const [autoFilled, setAutoFilled] = useState(false);
+
+  // Auto-fill password from vault when bot connects to a known server
+  useEffect(() => {
+    if (!status?.connected || !status?.host || !vault) return;
+    const key = `${status.host}:${status.port ?? 25565}`;
+    const entry = vault.find((e) => e.server === key);
+    if (entry?.password && !manualPw) {
+      setManualPw(entry.password);
+      setAutoFilled(true);
+    }
+  }, [status?.connected, status?.host, status?.port, vault]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -238,9 +256,17 @@ export default function ConfigPanel() {
         </CardHeader>
         <CardContent className="p-4 space-y-3">
           <div>
-            <label className="uppercase tracking-widest font-mono text-xs text-muted-foreground block mb-1">
-              PASSWORD
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="uppercase tracking-widest font-mono text-xs text-muted-foreground">
+                PASSWORD
+              </label>
+              {autoFilled && (
+                <span className="flex items-center gap-1 font-mono text-[10px] text-primary border border-primary/30 px-1.5 py-0.5">
+                  <Database className="h-2.5 w-2.5" />
+                  VAULT AUTO-FILLED
+                </span>
+              )}
+            </div>
             <Input
               type="password"
               placeholder="••••••••"
@@ -248,6 +274,7 @@ export default function ConfigPanel() {
               value={manualPw}
               onChange={(e) => {
                 setManualPw(e.target.value);
+                setAutoFilled(false);
                 setAuthFeedback(null);
               }}
             />

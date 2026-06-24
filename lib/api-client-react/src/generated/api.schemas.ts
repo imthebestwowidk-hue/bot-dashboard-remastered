@@ -82,6 +82,7 @@ export interface ConsoleLog {
 export interface MemoryEntry {
   server: string;
   registered: boolean;
+  password?: string | null;
 }
 
 export interface MessageResponse {

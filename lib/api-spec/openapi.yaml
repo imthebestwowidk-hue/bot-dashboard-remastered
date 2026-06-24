@@ -368,6 +368,9 @@ components:
           type: string
         registered:
           type: boolean
+        password:
+          type: string
+          nullable: true
       required:
         - server
         - registered

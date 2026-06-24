@@ -9,4 +9,5 @@
 export interface MemoryEntry {
   server: string;
   registered: boolean;
+  password?: string | null;
 }

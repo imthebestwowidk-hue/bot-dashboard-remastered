@@ -140,7 +140,8 @@ export const SendChatResponse = zod.object({
  */
 export const GetMemoryResponseItem = zod.object({
   "server": zod.string(),
-  "registered": zod.boolean()
+  "registered": zod.boolean(),
+  "password": zod.string().nullish()
 })
 export const GetMemoryResponse = zod.array(GetMemoryResponseItem)
 
