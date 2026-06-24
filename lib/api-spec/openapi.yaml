@@ -10,13 +10,18 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: bot
+    description: Bot control operations
+  - name: console
+    description: Console log operations
+  - name: memory
+    description: Authentication vault operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +29,183 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /bot/status:
+    get:
+      operationId: getBotStatus
+      tags: [bot]
+      summary: Get current bot status
+      responses:
+        "200":
+          description: Bot status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotStatus"
+
+  /bot/connect:
+    post:
+      operationId: connectBot
+      tags: [bot]
+      summary: Connect the bot to a Minecraft server
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectBotRequest"
+      responses:
+        "200":
+          description: Connection initiated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bot/disconnect:
+    post:
+      operationId: disconnectBot
+      tags: [bot]
+      summary: Disconnect the bot
+      responses:
+        "200":
+          description: Disconnected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /bot/attack:
+    post:
+      operationId: setAttackMode
+      tags: [bot]
+      summary: Set attack mode settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttackModeRequest"
+      responses:
+        "200":
+          description: Attack mode updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /bot/antiafk:
+    post:
+      operationId: setAntiAfk
+      tags: [bot]
+      summary: Set anti-AFK mode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AntiAfkRequest"
+      responses:
+        "200":
+          description: Anti-AFK updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /console:
+    get:
+      operationId: getConsole
+      tags: [console]
+      summary: Get console logs
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 100
+      responses:
+        "200":
+          description: Console logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConsoleLog"
+
+  /console/clear:
+    post:
+      operationId: clearConsole
+      tags: [console]
+      summary: Clear console logs
+      responses:
+        "200":
+          description: Cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /chat:
+    post:
+      operationId: sendChat
+      tags: [bot]
+      summary: Send a chat message or command
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendChatRequest"
+      responses:
+        "200":
+          description: Chat sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /memory:
+    get:
+      operationId: getMemory
+      tags: [memory]
+      summary: Get authentication vault entries
+      responses:
+        "200":
+          description: Vault entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MemoryEntry"
+
+  /memory/{server}:
+    delete:
+      operationId: deleteMemory
+      tags: [memory]
+      summary: Delete a vault entry by server
+      parameters:
+        - in: path
+          name: server
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +216,174 @@ components:
       required:
         - status
 
+    Position:
+      type: object
+      properties:
+        x:
+          type: number
+          nullable: true
+        y:
+          type: number
+          nullable: true
+        z:
+          type: number
+          nullable: true
+
+    AttackMode:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        targetPlayer:
+          type: string
+          nullable: true
+        attackMobs:
+          type: boolean
+      required:
+        - enabled
+        - attackMobs
+
+    AntiAfk:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+      required:
+        - enabled
+
+    BotStatus:
+      type: object
+      properties:
+        connected:
+          type: boolean
+        state:
+          type: string
+        host:
+          type: string
+          nullable: true
+        port:
+          type: integer
+          nullable: true
+        username:
+          type: string
+          nullable: true
+        version:
+          type: string
+          nullable: true
+        health:
+          type: number
+          nullable: true
+        food:
+          type: number
+          nullable: true
+        position:
+          $ref: "#/components/schemas/Position"
+          nullable: true
+        attackMode:
+          $ref: "#/components/schemas/AttackMode"
+        antiAfk:
+          $ref: "#/components/schemas/AntiAfk"
+        ping:
+          type: integer
+          nullable: true
+      required:
+        - connected
+        - state
+        - attackMode
+        - antiAfk
+
+    ConnectBotRequest:
+      type: object
+      properties:
+        host:
+          type: string
+        port:
+          type: integer
+          default: 25565
+        username:
+          type: string
+        version:
+          type: string
+        password:
+          type: string
+          nullable: true
+      required:
+        - host
+        - username
+        - version
+
+    AttackModeRequest:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        targetPlayer:
+          type: string
+          nullable: true
+        attackMobs:
+          type: boolean
+      required:
+        - enabled
+        - attackMobs
+
+    AntiAfkRequest:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+      required:
+        - enabled
+
+    SendChatRequest:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    ConsoleLog:
+      type: object
+      properties:
+        id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        type:
+          type: string
+          enum: [info, error, chat, system]
+        message:
+          type: string
+      required:
+        - id
+        - timestamp
+        - type
+        - message
+
+    MemoryEntry:
+      type: object
+      properties:
+        server:
+          type: string
+        registered:
+          type: boolean
+      required:
+        - server
+        - registered
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
