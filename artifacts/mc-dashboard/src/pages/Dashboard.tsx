@@ -6,6 +6,7 @@ import StatusPanel from "@/components/dashboard/StatusPanel";
 import ConsolePanel from "@/components/dashboard/ConsolePanel";
 import { AttackPanel, AntiAfkPanel } from "@/components/dashboard/ActionPanels";
 import MemoryPanel from "@/components/dashboard/MemoryPanel";
+import GitHubPanel from "@/components/dashboard/GitHubPanel";
 import { useHealthCheck, getHealthCheckQueryKey } from "@workspace/api-client-react";
 
 export default function Dashboard() {
@@ -65,6 +66,7 @@ export default function Dashboard() {
             <ConfigPanel />
             <AttackPanel />
             <AntiAfkPanel />
+            <GitHubPanel />
           </div>
 
           {/* Middle: Telemetry & Vault (3 cols) */}

@@ -90,7 +90,8 @@ export function connectBot(opts: ConnectOptions) {
   botState.botState = "connecting";
   botState.addLog("system", `Initiating uplink to ${opts.host}:${opts.port}...`);
 
-  const serverKey = `${opts.host}:${opts.port}`;
+  // Key includes username so different bot names on the same server have separate vault entries
+  const serverKey = `${opts.host}:${opts.port}:${opts.username}`;
   // Capture password at connect time — opts.password could be "" which is falsy,
   // so store it separately and treat "" the same as null (no auto-auth)
   const password = (opts.password && opts.password.trim()) ? opts.password.trim() : null;

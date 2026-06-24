@@ -44,26 +44,40 @@ export default function ConfigPanel() {
   const [autoFilled, setAutoFilled] = useState(false);
 
   // Auto-fill password from vault when bot connects to a known server
+  // Key now includes username: host:port:username
   useEffect(() => {
     if (!status?.connected || !status?.host || !vault) return;
-    const key = `${status.host}:${status.port ?? 25565}`;
+    const key = `${status.host}:${status.port ?? 25565}:${status.username ?? ""}`;
     const entry = vault.find((e) => e.server === key);
     if (entry?.password && !manualPw) {
       setManualPw(entry.password);
       setAutoFilled(true);
     }
-  }, [status?.connected, status?.host, status?.port, vault]);
+  }, [status?.connected, status?.host, status?.port, status?.username, vault]);
+
+  // Load saved form values from localStorage (per-browser / per-device)
+  const savedForm = (() => {
+    try { return JSON.parse(localStorage.getItem("botctrl_form") ?? "{}"); } catch { return {}; }
+  })();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      host: "",
-      port: 25565,
-      username: "Bot_001",
-      version: "1.20.1",
-      password: "",
+      host: savedForm.host ?? "",
+      port: savedForm.port ?? 25565,
+      username: savedForm.username ?? "Bot_001",
+      version: savedForm.version ?? "1.20.1",
+      password: savedForm.password ?? "",
     },
   });
+
+  // Persist form values to localStorage on every change
+  useEffect(() => {
+    const sub = form.watch((values) => {
+      localStorage.setItem("botctrl_form", JSON.stringify(values));
+    });
+    return () => sub.unsubscribe();
+  }, [form]);
 
   const onSubmit = (data: FormValues) => {
     connectMutation.mutate({ data });
