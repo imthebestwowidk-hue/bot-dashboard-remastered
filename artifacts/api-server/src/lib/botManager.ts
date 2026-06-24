@@ -10,28 +10,103 @@ export interface ConnectOptions {
   password?: string | null;
 }
 
-const AUTH_REGISTER_PATTERNS = [
-  /register/i,
+const REGISTER_PATTERNS = [
   /\/register/i,
   /please register/i,
   /you need to register/i,
   /register with/i,
+  /use \/register/i,
+  /type \/register/i,
+  /not registered/i,
+  /register an account/i,
+  /to register/i,
 ];
 
-const AUTH_LOGIN_PATTERNS = [
+const LOGIN_PATTERNS = [
   /\/login/i,
   /please login/i,
   /please log in/i,
-  /you need to log in/i,
+  /you need to log ?in/i,
   /log in to/i,
   /type \/login/i,
+  /use \/login/i,
+  /already registered/i,
+  /to login/i,
 ];
 
-function isAuthPrompt(message: string): "register" | "login" | null {
-  const lower = message.toLowerCase();
-  if (AUTH_LOGIN_PATTERNS.some((p) => p.test(lower))) return "login";
-  if (AUTH_REGISTER_PATTERNS.some((p) => p.test(lower))) return "register";
+const DOUBLE_PASSWORD_PATTERNS = [
+  /repeat/i,
+  /confirm/i,
+  /twice/i,
+  /again/i,
+  /retype/i,
+  /second/i,
+  /two times/i,
+  /<password> <password>/i,
+  /password password/i,
+  /\[password\] \[password\]/i,
+];
+
+function classifyMessage(text: string): "register" | "login" | null {
+  const lower = text.toLowerCase();
+  if (LOGIN_PATTERNS.some((p) => p.test(lower))) return "login";
+  if (REGISTER_PATTERNS.some((p) => p.test(lower))) return "register";
   return null;
+}
+
+function needsDoublePassword(text: string): boolean {
+  return DOUBLE_PASSWORD_PATTERNS.some((p) => p.test(text));
+}
+
+let authHandled = false;
+
+function handleAuthMessage(
+  text: string,
+  serverKey: string,
+  password: string,
+  bot: any
+) {
+  const kind = classifyMessage(text);
+  if (!kind) return;
+
+  if (authHandled) return;
+
+  const existing = botState.getMemoryEntry(serverKey);
+
+  if (kind === "login" || (kind === "register" && existing?.registered)) {
+    const pw = existing?.password ?? password;
+    authHandled = true;
+    setTimeout(() => {
+      try {
+        bot.chat(`/login ${pw}`);
+        botState.addLog("system", `AUTO-AUTH: sent /login (vault entry found for ${serverKey})`);
+      } catch (err: any) {
+        logger.error({ err }, "Error sending /login");
+      }
+    }, 600);
+    return;
+  }
+
+  if (kind === "register" && !existing?.registered) {
+    const useDouble = needsDoublePassword(text);
+    const cmd = useDouble
+      ? `/register ${password} ${password}`
+      : `/register ${password}`;
+
+    authHandled = true;
+    setTimeout(() => {
+      try {
+        bot.chat(cmd);
+        botState.addLog(
+          "system",
+          `AUTO-AUTH: sent ${useDouble ? "/register <pw> <pw>" : "/register <pw>"} (first time on ${serverKey})`
+        );
+        botState.setMemoryEntry({ server: serverKey, registered: true, password });
+      } catch (err: any) {
+        logger.error({ err }, "Error sending /register");
+      }
+    }, 600);
+  }
 }
 
 export function connectBot(opts: ConnectOptions) {
@@ -41,6 +116,8 @@ export function connectBot(opts: ConnectOptions) {
     } catch {}
     botState.reset();
   }
+
+  authHandled = false;
 
   botState.botHost = opts.host;
   botState.botPort = opts.port;
@@ -70,6 +147,8 @@ export function connectBot(opts: ConnectOptions) {
 
   botState.bot = bot;
 
+  const password = opts.password || botState.pendingPassword;
+
   bot.on("login", () => {
     botState.botConnected = true;
     botState.botState = "online";
@@ -78,12 +157,8 @@ export function connectBot(opts: ConnectOptions) {
 
   bot.on("spawn", () => {
     botState.addLog("system", "Bot spawned in world.");
-    if (botState.attackMode.enabled) {
-      botState.setAttackMode(botState.attackMode);
-    }
-    if (botState.antiAfk.enabled) {
-      botState.setAntiAfk(botState.antiAfk);
-    }
+    if (botState.attackMode.enabled) botState.setAttackMode(botState.attackMode);
+    if (botState.antiAfk.enabled) botState.setAntiAfk(botState.antiAfk);
   });
 
   bot.on("chat", (username: string, message: string) => {
@@ -93,52 +168,17 @@ export function connectBot(opts: ConnectOptions) {
   bot.on("message", (jsonMsg: any) => {
     const text = jsonMsg.toString();
     botState.addLog("info", text);
-
-    if (!opts.password && !botState.pendingPassword) return;
-
-    const password = opts.password || botState.pendingPassword;
-    if (!password) return;
-
-    const authPrompt = isAuthPrompt(text);
-
-    if (authPrompt === "login") {
-      const existing = botState.getMemoryEntry(serverKey);
-      if (existing) {
-        setTimeout(() => {
-          try {
-            bot.chat(`/login ${existing.password}`);
-            botState.addLog("system", "Sent /login command (auto-auth from vault).");
-          } catch (err) {
-            logger.error({ err }, "Error sending /login");
-          }
-        }, 500);
-      }
-    } else if (authPrompt === "register") {
-      const existing = botState.getMemoryEntry(serverKey);
-      if (existing && existing.registered) {
-        setTimeout(() => {
-          try {
-            bot.chat(`/login ${existing.password}`);
-            botState.addLog("system", "Already registered — sent /login (not /register again).");
-          } catch (err) {
-            logger.error({ err }, "Error sending /login");
-          }
-        }, 500);
-      } else {
-        setTimeout(() => {
-          try {
-            bot.chat(`/register ${password} ${password}`);
-            botState.addLog("system", "Sent /register command (first time on this server).");
-            botState.setMemoryEntry({ server: serverKey, registered: true, password });
-          } catch (err) {
-            logger.error({ err }, "Error sending /register");
-          }
-        }, 500);
-      }
+    if (password) {
+      handleAuthMessage(text, serverKey, password, bot);
     }
   });
 
-  bot.on("health", () => {
+  bot.on("whisper", (username: string, message: string) => {
+    const text = `[whisper] ${username}: ${message}`;
+    botState.addLog("info", text);
+    if (password) {
+      handleAuthMessage(text, serverKey, password, bot);
+    }
   });
 
   bot.on("error", (err: any) => {
@@ -151,6 +191,7 @@ export function connectBot(opts: ConnectOptions) {
     botState.botConnected = false;
     botState.botState = "disconnected";
     botState.bot = null;
+    authHandled = false;
     botState.addLog("system", `Disconnected: ${reason ?? "connection closed"}`);
     logger.info({ reason }, "Bot disconnected");
   });
@@ -173,6 +214,7 @@ export function disconnectBot() {
       botState.bot.quit("Operator disconnect");
     } catch {}
   }
+  authHandled = false;
   botState.reset();
   botState.addLog("system", "Bot disconnected by operator.");
 }
