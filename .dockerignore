@@ -1,0 +1,10 @@
+node_modules
+**/node_modules
+**/.pnpm-store
+**/dist
+**/.tsbuildinfo
+.git
+.replit
+.local
+attached_assets
+artifacts/mockup-sandbox
