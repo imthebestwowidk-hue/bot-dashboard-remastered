@@ -10,30 +10,17 @@ export interface ConnectOptions {
   password?: string | null;
 }
 
+// Very broad patterns — if the server mentions these words, treat it as an auth prompt
 const REGISTER_PATTERNS = [
-  /\/register/i,
-  /please register/i,
-  /you need to register/i,
-  /register with/i,
-  /use \/register/i,
-  /type \/register/i,
-  /not registered/i,
-  /register an account/i,
-  /to register/i,
+  /register/i,
 ];
 
 const LOGIN_PATTERNS = [
-  /\/login/i,
-  /please login/i,
-  /please log in/i,
-  /you need to log ?in/i,
-  /log in to/i,
-  /type \/login/i,
-  /use \/login/i,
-  /already registered/i,
-  /to login/i,
+  /login/i,
+  /log.?in/i,
 ];
 
+// If the server message implies typing the password twice
 const DOUBLE_PASSWORD_PATTERNS = [
   /repeat/i,
   /confirm/i,
@@ -41,16 +28,15 @@ const DOUBLE_PASSWORD_PATTERNS = [
   /again/i,
   /retype/i,
   /second/i,
-  /two times/i,
+  /two.?times/i,
   /<password> <password>/i,
-  /password password/i,
-  /\[password\] \[password\]/i,
+  /password> <password/i,
+  /\[password\]\s*\[password\]/i,
 ];
 
-function classifyMessage(text: string): "register" | "login" | null {
-  const lower = text.toLowerCase();
-  if (LOGIN_PATTERNS.some((p) => p.test(lower))) return "login";
-  if (REGISTER_PATTERNS.some((p) => p.test(lower))) return "register";
+function classifyText(text: string): "register" | "login" | null {
+  if (LOGIN_PATTERNS.some((p) => p.test(text))) return "login";
+  if (REGISTER_PATTERNS.some((p) => p.test(text))) return "register";
   return null;
 }
 
@@ -58,66 +44,43 @@ function needsDoublePassword(text: string): boolean {
   return DOUBLE_PASSWORD_PATTERNS.some((p) => p.test(text));
 }
 
-let authHandled = false;
-
-function handleAuthMessage(
-  text: string,
-  serverKey: string,
-  password: string,
-  bot: any
-) {
-  const kind = classifyMessage(text);
-  if (!kind) return;
-
-  if (authHandled) return;
-
-  const existing = botState.getMemoryEntry(serverKey);
-
-  if (kind === "login" || (kind === "register" && existing?.registered)) {
-    const pw = existing?.password ?? password;
-    authHandled = true;
-    setTimeout(() => {
-      try {
-        bot.chat(`/login ${pw}`);
-        botState.addLog("system", `AUTO-AUTH: sent /login (vault entry found for ${serverKey})`);
-      } catch (err: any) {
-        logger.error({ err }, "Error sending /login");
-      }
-    }, 600);
-    return;
+// Extract plain text from various packet formats
+function extractText(data: any): string {
+  if (!data) return "";
+  if (typeof data === "string") {
+    // Try to parse as JSON (Minecraft chat component)
+    try {
+      const parsed = JSON.parse(data);
+      return flattenComponent(parsed);
+    } catch {
+      return data;
+    }
   }
-
-  if (kind === "register" && !existing?.registered) {
-    const useDouble = needsDoublePassword(text);
-    const cmd = useDouble
-      ? `/register ${password} ${password}`
-      : `/register ${password}`;
-
-    authHandled = true;
-    setTimeout(() => {
-      try {
-        bot.chat(cmd);
-        botState.addLog(
-          "system",
-          `AUTO-AUTH: sent ${useDouble ? "/register <pw> <pw>" : "/register <pw>"} (first time on ${serverKey})`
-        );
-        botState.setMemoryEntry({ server: serverKey, registered: true, password });
-      } catch (err: any) {
-        logger.error({ err }, "Error sending /register");
-      }
-    }, 600);
+  if (typeof data === "object") {
+    return flattenComponent(data);
   }
+  return String(data);
+}
+
+function flattenComponent(obj: any): string {
+  if (!obj) return "";
+  if (typeof obj === "string") return obj;
+  let text = obj.text ?? obj.translate ?? "";
+  if (Array.isArray(obj.extra)) {
+    text += obj.extra.map(flattenComponent).join("");
+  }
+  if (Array.isArray(obj.with)) {
+    // simple translate substitution — just join the args
+    text += " " + obj.with.map(flattenComponent).join(" ");
+  }
+  return text;
 }
 
 export function connectBot(opts: ConnectOptions) {
   if (botState.bot) {
-    try {
-      botState.bot.quit();
-    } catch {}
+    try { botState.bot.quit(); } catch {}
     botState.reset();
   }
-
-  authHandled = false;
 
   botState.botHost = opts.host;
   botState.botPort = opts.port;
@@ -128,6 +91,55 @@ export function connectBot(opts: ConnectOptions) {
   botState.addLog("system", `Initiating uplink to ${opts.host}:${opts.port}...`);
 
   const serverKey = `${opts.host}:${opts.port}`;
+  // Capture password at connect time — opts.password could be "" which is falsy,
+  // so store it separately and treat "" the same as null (no auto-auth)
+  const password = (opts.password && opts.password.trim()) ? opts.password.trim() : null;
+
+  let authSent = false;
+
+  function tryAuth(rawText: string) {
+    if (authSent) return;
+    if (!password) return;
+
+    const kind = classifyText(rawText);
+    if (!kind) return;
+
+    const existing = botState.getMemoryEntry(serverKey);
+
+    if (kind === "login" || (kind === "register" && existing?.registered)) {
+      const pw = existing?.password ?? password;
+      authSent = true;
+      setTimeout(() => {
+        try {
+          bot.chat(`/login ${pw}`);
+          botState.addLog("system", `AUTO-AUTH: /login sent (vault: ${!!existing})`);
+        } catch (err: any) {
+          logger.error({ err }, "Error sending /login");
+        }
+      }, 600);
+      return;
+    }
+
+    if (kind === "register" && !existing?.registered) {
+      const useDouble = needsDoublePassword(rawText);
+      const cmd = useDouble
+        ? `/register ${password} ${password}`
+        : `/register ${password}`;
+      authSent = true;
+      setTimeout(() => {
+        try {
+          bot.chat(cmd);
+          botState.addLog(
+            "system",
+            `AUTO-AUTH: ${useDouble ? "/register <pw> <pw>" : "/register <pw>"} sent — saving to vault`
+          );
+          botState.setMemoryEntry({ server: serverKey, registered: true, password });
+        } catch (err: any) {
+          logger.error({ err }, "Error sending /register");
+        }
+      }, 600);
+    }
+  }
 
   let bot: any;
   try {
@@ -147,8 +159,7 @@ export function connectBot(opts: ConnectOptions) {
 
   botState.bot = bot;
 
-  const password = opts.password || botState.pendingPassword;
-
+  // ── mineflayer high-level events ────────────────────────────────────────────
   bot.on("login", () => {
     botState.botConnected = true;
     botState.botState = "online";
@@ -163,24 +174,57 @@ export function connectBot(opts: ConnectOptions) {
 
   bot.on("chat", (username: string, message: string) => {
     botState.addLog("chat", `<${username}> ${message}`);
+    tryAuth(message);
   });
 
+  // mineflayer message event — catches system/server messages
   bot.on("message", (jsonMsg: any) => {
-    const text = jsonMsg.toString();
+    const text = typeof jsonMsg?.toString === "function" ? jsonMsg.toString() : String(jsonMsg);
     botState.addLog("info", text);
-    if (password) {
-      handleAuthMessage(text, serverKey, password, bot);
-    }
+    tryAuth(text);
   });
 
-  bot.on("whisper", (username: string, message: string) => {
-    const text = `[whisper] ${username}: ${message}`;
-    botState.addLog("info", text);
-    if (password) {
-      handleAuthMessage(text, serverKey, password, bot);
-    }
-  });
+  // ── Raw packet listeners — catches EVERYTHING the server sends ───────────────
+  // These fire for every packet, before mineflayer processes them,
+  // so we catch auth prompts even if mineflayer drops or transforms them.
+  const client = bot._client;
 
+  if (client) {
+    // 1.18 and below: "chat" packet
+    client.on("chat", (packet: any) => {
+      const text = extractText(packet.message ?? packet.chatMessage ?? packet.msg ?? "");
+      if (text) tryAuth(text);
+    });
+
+    // 1.19+: "system_chat" packet
+    client.on("system_chat", (packet: any) => {
+      const text = extractText(packet.content ?? packet.message ?? "");
+      if (text) tryAuth(text);
+    });
+
+    // Title packets (some servers send auth prompts as titles)
+    client.on("title", (packet: any) => {
+      const text = extractText(packet.text ?? packet.title ?? "");
+      if (text) tryAuth(text);
+    });
+
+    // Action bar
+    client.on("action_bar", (packet: any) => {
+      const text = extractText(packet.text ?? "");
+      if (text) tryAuth(text);
+    });
+
+    // Disconnect/kick reason also sometimes contains auth hint
+    client.on("kick_disconnect", (packet: any) => {
+      const text = extractText(packet.reason ?? "");
+      botState.addLog("error", `Kicked: ${text}`);
+    });
+  }
+
+  // ── Health / combat ─────────────────────────────────────────────────────────
+  bot.on("health", () => {});
+
+  // ── Error / disconnect ───────────────────────────────────────────────────────
   bot.on("error", (err: any) => {
     botState.addLog("error", `Error: ${err.message}`);
     logger.error({ err }, "Bot error");
@@ -191,7 +235,7 @@ export function connectBot(opts: ConnectOptions) {
     botState.botConnected = false;
     botState.botState = "disconnected";
     botState.bot = null;
-    authHandled = false;
+    authSent = false;
     botState.addLog("system", `Disconnected: ${reason ?? "connection closed"}`);
     logger.info({ reason }, "Bot disconnected");
   });
@@ -210,11 +254,8 @@ export function connectBot(opts: ConnectOptions) {
 
 export function disconnectBot() {
   if (botState.bot) {
-    try {
-      botState.bot.quit("Operator disconnect");
-    } catch {}
+    try { botState.bot.quit("Operator disconnect"); } catch {}
   }
-  authHandled = false;
   botState.reset();
   botState.addLog("system", "Bot disconnected by operator.");
 }
