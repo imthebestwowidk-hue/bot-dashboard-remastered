@@ -1,8 +1,12 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import path from "path";
+import { fileURLToPath } from "url";
 import router from "./routes";
 import { logger } from "./lib/logger";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app: Express = express();
 
@@ -29,6 +33,22 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// API routes
 app.use("/api", router);
+
+// In production serve the React frontend from the built dist
+if (process.env["NODE_ENV"] === "production") {
+  // The api-server dist/ sits at artifacts/api-server/dist/index.mjs
+  // The dashboard dist/public sits at artifacts/mc-dashboard/dist/public
+  // __dirname = /app/artifacts/api-server/dist  →  ../../mc-dashboard/dist/public
+  const dashboardDist = path.resolve(__dirname, "../../mc-dashboard/dist/public");
+
+  app.use(express.static(dashboardDist));
+
+  // SPA fallback — serve index.html for any non-API route
+  app.get("*", (_req, res) => {
+    res.sendFile(path.join(dashboardDist, "index.html"));
+  });
+}
 
 export default app;
