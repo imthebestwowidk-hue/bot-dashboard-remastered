@@ -5,12 +5,22 @@ import ConfigPanel from "@/components/dashboard/ConfigPanel";
 import StatusPanel from "@/components/dashboard/StatusPanel";
 import ConsolePanel from "@/components/dashboard/ConsolePanel";
 import { AttackPanel, AntiAfkPanel, FollowPanel, AutoDropPanel } from "@/components/dashboard/ActionPanels";
-import MemoryPanel from "@/components/dashboard/MemoryPanel";
+import VaultBar from "@/components/dashboard/VaultBar";
 import GitHubPanel from "@/components/dashboard/GitHubPanel";
 import { useHealthCheck, getHealthCheckQueryKey } from "@workspace/api-client-react";
 
+function getSavedUsername(): string {
+  try {
+    const saved = JSON.parse(localStorage.getItem("botctrl_form") ?? "{}");
+    return saved.username ?? "Bot_001";
+  } catch {
+    return "Bot_001";
+  }
+}
+
 export default function Dashboard() {
   const [time, setTime] = useState("");
+  const [currentUsername, setCurrentUsername] = useState<string>(getSavedUsername);
   const { data: health } = useHealthCheck({ query: { queryKey: getHealthCheckQueryKey(), refetchInterval: 5000 } });
 
   useEffect(() => {
@@ -58,12 +68,15 @@ export default function Dashboard() {
           </div>
         </header>
 
+        {/* Vault Bar — full width, below header */}
+        <VaultBar currentUsername={currentUsername} />
+
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 items-start">
           
           {/* Left: Config & Actions (4 cols) */}
           <div className="lg:col-span-4 flex flex-col gap-4">
-            <ConfigPanel />
+            <ConfigPanel onUsernameChange={setCurrentUsername} />
             <AttackPanel />
             <FollowPanel />
             <AutoDropPanel />
@@ -71,10 +84,9 @@ export default function Dashboard() {
             <GitHubPanel />
           </div>
 
-          {/* Middle: Telemetry & Vault (3 cols) */}
+          {/* Middle: Telemetry (3 cols) */}
           <div className="lg:col-span-3 flex flex-col gap-4">
             <StatusPanel />
-            <MemoryPanel />
           </div>
 
           {/* Right: Console (5 cols) */}

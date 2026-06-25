@@ -27,7 +27,11 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-export default function ConfigPanel() {
+interface ConfigPanelProps {
+  onUsernameChange?: (username: string) => void;
+}
+
+export default function ConfigPanel({ onUsernameChange }: ConfigPanelProps) {
   const { data: status } = useGetBotStatus({
     query: { queryKey: getGetBotStatusQueryKey(), refetchInterval: 2000 },
   });
@@ -71,13 +75,16 @@ export default function ConfigPanel() {
     },
   });
 
-  // Persist form values to localStorage on every change
+  // Persist form values to localStorage on every change + notify parent of username changes
   useEffect(() => {
     const sub = form.watch((values) => {
       localStorage.setItem("botctrl_form", JSON.stringify(values));
+      if (values.username !== undefined) {
+        onUsernameChange?.(values.username);
+      }
     });
     return () => sub.unsubscribe();
-  }, [form]);
+  }, [form, onUsernameChange]);
 
   const onSubmit = (data: FormValues) => {
     connectMutation.mutate({ data });
