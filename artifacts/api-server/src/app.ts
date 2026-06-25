@@ -46,7 +46,8 @@ if (process.env["NODE_ENV"] === "production") {
   app.use(express.static(dashboardDist));
 
   // SPA fallback — serve index.html for any non-API route
-  app.get("*", (_req, res) => {
+  // Express 5 dropped bare "*" in app.get(); use app.use() instead
+  app.use((_req, res) => {
     res.sendFile(path.join(dashboardDist, "index.html"));
   });
 }
