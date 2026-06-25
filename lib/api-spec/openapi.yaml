@@ -119,6 +119,44 @@ paths:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
 
+  /bot/follow:
+    post:
+      operationId: setFollowMode
+      tags: [bot]
+      summary: Set follow mode (follow player without attacking)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FollowModeRequest"
+      responses:
+        "200":
+          description: Follow mode updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /bot/autodrop:
+    post:
+      operationId: setAutoDrop
+      tags: [bot]
+      summary: Set auto-drop mode (drop all items, or equip armor/elytra when off)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutoDropRequest"
+      responses:
+        "200":
+          description: Auto-drop updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
   /console:
     get:
       operationId: getConsole
@@ -251,6 +289,25 @@ components:
       required:
         - enabled
 
+    FollowMode:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        targetPlayer:
+          type: string
+          nullable: true
+      required:
+        - enabled
+
+    AutoDrop:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+      required:
+        - enabled
+
     BotStatus:
       type: object
       properties:
@@ -283,6 +340,10 @@ components:
           $ref: "#/components/schemas/AttackMode"
         antiAfk:
           $ref: "#/components/schemas/AntiAfk"
+        followMode:
+          $ref: "#/components/schemas/FollowMode"
+        autoDrop:
+          $ref: "#/components/schemas/AutoDrop"
         ping:
           type: integer
           nullable: true
@@ -291,6 +352,8 @@ components:
         - state
         - attackMode
         - antiAfk
+        - followMode
+        - autoDrop
 
     ConnectBotRequest:
       type: object
@@ -327,6 +390,25 @@ components:
         - attackMobs
 
     AntiAfkRequest:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+      required:
+        - enabled
+
+    FollowModeRequest:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        targetPlayer:
+          type: string
+          nullable: true
+      required:
+        - enabled
+
+    AutoDropRequest:
       type: object
       properties:
         enabled:

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useGetBotStatus, getGetBotStatusQueryKey, useSetAttackMode, useSetAntiAfk } from "@workspace/api-client-react";
+import { useGetBotStatus, getGetBotStatusQueryKey, useSetAttackMode, useSetAntiAfk, useSetFollowMode, useSetAutoDrop } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,6 @@ export function AttackPanel() {
   const [enabled, setEnabled] = useState(attackMode.enabled);
   const [attackMobs, setAttackMobs] = useState(attackMode.attackMobs);
 
-  // Sync state when server data updates
   useEffect(() => {
     if (status?.attackMode) {
       setEnabled(status.attackMode.enabled);
@@ -88,6 +87,140 @@ export function AttackPanel() {
           <Label htmlFor="attack-mobs" className="uppercase tracking-widest font-mono text-xs text-foreground cursor-pointer">
             ENGAGE HOSTILE ENTITIES (MOBS)
           </Label>
+        </div>
+
+        {enabled && (
+          <div className="p-2 border border-destructive/30 bg-destructive/5 font-mono text-xs text-destructive/80 uppercase tracking-wider">
+            &gt; BOT WILL CLOSE IN ON TARGET BEFORE STRIKING
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function FollowPanel() {
+  const { data: status } = useGetBotStatus({ query: { queryKey: getGetBotStatusQueryKey(), refetchInterval: 2000 } });
+  const setFollowMutation = useSetFollowMode();
+
+  const isConnected = status?.connected || false;
+  const followMode = status?.followMode || { enabled: false, targetPlayer: null };
+
+  const [targetInput, setTargetInput] = useState(followMode.targetPlayer || "");
+  const [enabled, setEnabled] = useState(followMode.enabled);
+
+  useEffect(() => {
+    if (status?.followMode) {
+      setEnabled(status.followMode.enabled);
+      if (status.followMode.targetPlayer !== undefined) {
+        setTargetInput(status.followMode.targetPlayer || "");
+      }
+    }
+  }, [status?.followMode]);
+
+  const handleToggle = (checked: boolean) => {
+    setEnabled(checked);
+    setFollowMutation.mutate({ data: { enabled: checked, targetPlayer: targetInput || null } });
+  };
+
+  const handleLock = () => {
+    setFollowMutation.mutate({ data: { enabled, targetPlayer: targetInput || null } });
+  };
+
+  return (
+    <Card className={`rounded-none border-border bg-card transition-all duration-300 relative overflow-hidden ${enabled ? 'border-accent/50 shadow-[0_0_15px_rgba(100,200,255,0.15)]' : ''}`}>
+      {enabled && <div className="absolute inset-0 bg-accent/5 animate-pulse pointer-events-none" />}
+      <CardHeader className="rounded-none bg-secondary/30 border-b border-border py-3 flex flex-row items-center justify-between z-10 relative">
+        <CardTitle className="uppercase tracking-widest font-mono text-sm text-primary flex items-center gap-2">
+          SHADOW PROTOCOL (FOLLOW)
+        </CardTitle>
+        <Switch 
+          checked={enabled} 
+          onCheckedChange={handleToggle} 
+          disabled={!isConnected || setFollowMutation.isPending}
+          className="data-[state=checked]:bg-accent"
+        />
+      </CardHeader>
+      <CardContent className="p-4 space-y-4 z-10 relative">
+        <div className="space-y-2">
+          <Label className="uppercase tracking-widest font-mono text-xs text-muted-foreground">TARGET PLAYER</Label>
+          <div className="flex gap-2">
+            <Input 
+              value={targetInput}
+              onChange={(e) => setTargetInput(e.target.value)}
+              placeholder="PLAYER_NAME"
+              className="rounded-none font-mono"
+              disabled={!isConnected || !enabled}
+            />
+            <Button 
+              variant="outline" 
+              className={`rounded-none font-mono tracking-widest uppercase ${enabled && targetInput ? 'border-accent text-accent hover:bg-accent hover:text-black' : ''}`}
+              onClick={handleLock}
+              disabled={!isConnected || !enabled || setFollowMutation.isPending}
+            >
+              TRACK
+            </Button>
+          </div>
+        </div>
+
+        <div className={`p-2 border font-mono text-xs uppercase tracking-wider ${enabled ? 'bg-accent/10 border-accent/30 text-accent/80' : 'bg-muted border-border text-muted-foreground'}`}>
+          {enabled 
+            ? `> SHADOWING ${targetInput || "TARGET"} — NO HOSTILE ACTION` 
+            : "> INACTIVE. BOT HOLDS POSITION."}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function AutoDropPanel() {
+  const { data: status } = useGetBotStatus({ query: { queryKey: getGetBotStatusQueryKey(), refetchInterval: 2000 } });
+  const setAutoDropMutation = useSetAutoDrop();
+
+  const isConnected = status?.connected || false;
+  const autoDrop = status?.autoDrop || { enabled: false };
+  const [enabled, setEnabled] = useState(autoDrop.enabled);
+
+  useEffect(() => {
+    if (status?.autoDrop) {
+      setEnabled(status.autoDrop.enabled);
+    }
+  }, [status?.autoDrop]);
+
+  const handleToggle = (checked: boolean) => {
+    setEnabled(checked);
+    setAutoDropMutation.mutate({ data: { enabled: checked } });
+  };
+
+  return (
+    <Card className={`rounded-none border-border bg-card transition-all duration-300 relative overflow-hidden ${enabled ? 'border-yellow-500/50 shadow-[0_0_15px_rgba(255,200,0,0.1)]' : ''}`}>
+      {enabled && <div className="absolute inset-0 bg-yellow-500/5 animate-pulse pointer-events-none" />}
+      <CardHeader className="rounded-none bg-secondary/30 border-b border-border py-3 flex flex-row items-center justify-between z-10 relative">
+        <CardTitle className="uppercase tracking-widest font-mono text-sm text-primary flex items-center gap-2">
+          AUTO-DROP PROTOCOL
+        </CardTitle>
+        <Switch 
+          checked={enabled} 
+          onCheckedChange={handleToggle} 
+          disabled={!isConnected || setAutoDropMutation.isPending}
+          className="data-[state=checked]:bg-yellow-500"
+        />
+      </CardHeader>
+      <CardContent className="p-4 z-10 relative space-y-3">
+        <div className={`p-3 border font-mono text-xs uppercase tracking-wider ${enabled ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' : 'bg-muted border-border text-muted-foreground'}`}>
+          {enabled 
+            ? "> ACTIVE — ALL ITEMS DROPPED ON PICKUP. ARMOR AND ELYTRA WILL BE DROPPED." 
+            : "> INACTIVE — BOT WILL WEAR ARMOR AND ELYTRA WHEN RECEIVED."}
+        </div>
+        <div className="font-mono text-xs text-muted-foreground space-y-1">
+          <div className={`flex items-center gap-2 ${enabled ? 'text-yellow-400/60' : 'text-primary/60'}`}>
+            <span className="w-2 h-2 rounded-full border inline-block" style={{ background: enabled ? 'rgb(234,179,8,0.3)' : 'rgb(0,255,150,0.3)', borderColor: enabled ? 'rgb(234,179,8,0.5)' : 'rgb(0,255,150,0.5)' }} />
+            {enabled ? "ELYTRA/ARMOR: DROPPED" : "ELYTRA/ARMOR: AUTO-EQUIPPED"}
+          </div>
+          <div className={`flex items-center gap-2 ${enabled ? 'text-yellow-400/60' : 'text-muted-foreground'}`}>
+            <span className="w-2 h-2 rounded-full border inline-block" style={{ background: enabled ? 'rgb(234,179,8,0.3)' : 'transparent', borderColor: enabled ? 'rgb(234,179,8,0.5)' : 'rgb(100,100,100,0.5)' }} />
+            {enabled ? "ALL OTHER ITEMS: DROPPED" : "ALL OTHER ITEMS: KEPT"}
+          </div>
         </div>
       </CardContent>
     </Card>

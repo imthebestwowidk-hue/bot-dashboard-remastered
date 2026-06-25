@@ -81,6 +81,7 @@ async function buildAll() {
       "miniflare",
       "mysql2",
       "mineflayer",
+      "mineflayer-pathfinder",
       "newrelic",
       "odbc",
       "piscina",

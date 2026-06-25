@@ -1,5 +1,7 @@
 FROM node:20-alpine AS builder
 
+RUN apk add --no-cache python3 make g++ git
+
 RUN corepack enable && corepack prepare pnpm@10.11.0 --activate
 
 WORKDIR /app
@@ -26,6 +28,8 @@ RUN pnpm --filter @workspace/api-server run build
 
 # ── Production image ─────────────────────────────────────────────────────────
 FROM node:20-alpine
+
+RUN apk add --no-cache python3 make g++ git
 
 RUN corepack enable && corepack prepare pnpm@10.11.0 --activate
 

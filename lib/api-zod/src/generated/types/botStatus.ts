@@ -7,6 +7,8 @@
  */
 import type { AntiAfk } from './antiAfk';
 import type { AttackMode } from './attackMode';
+import type { AutoDrop } from './autoDrop';
+import type { FollowMode } from './followMode';
 import type { Position } from './position';
 
 export interface BotStatus {
@@ -21,5 +23,7 @@ export interface BotStatus {
   position?: Position | null;
   attackMode: AttackMode;
   antiAfk: AntiAfk;
+  followMode: FollowMode;
+  autoDrop: AutoDrop;
   ping?: number | null;
 }

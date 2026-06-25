@@ -171,6 +171,8 @@ export function connectBot(opts: ConnectOptions) {
     botState.addLog("system", "Bot spawned in world.");
     if (botState.attackMode.enabled) botState.setAttackMode(botState.attackMode);
     if (botState.antiAfk.enabled) botState.setAntiAfk(botState.antiAfk);
+    if (botState.followMode.enabled) botState.setFollowMode(botState.followMode);
+    if (botState.autoDrop.enabled) botState.setAutoDrop(botState.autoDrop);
   });
 
   bot.on("chat", (username: string, message: string) => {
@@ -221,6 +223,14 @@ export function connectBot(opts: ConnectOptions) {
       botState.addLog("error", `Kicked: ${text}`);
     });
   }
+
+  // ── Inventory / item pickup ──────────────────────────────────────────────────
+  bot.on("playerCollect", async (_collector: any, _itemDrop: any) => {
+    // Small delay so inventory is updated before we act
+    setTimeout(() => {
+      botState.handleItemPickup().catch(() => {});
+    }, 500);
+  });
 
   // ── Health / combat ─────────────────────────────────────────────────────────
   bot.on("health", () => {});

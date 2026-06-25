@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import ConfigPanel from "@/components/dashboard/ConfigPanel";
 import StatusPanel from "@/components/dashboard/StatusPanel";
 import ConsolePanel from "@/components/dashboard/ConsolePanel";
-import { AttackPanel, AntiAfkPanel } from "@/components/dashboard/ActionPanels";
+import { AttackPanel, AntiAfkPanel, FollowPanel, AutoDropPanel } from "@/components/dashboard/ActionPanels";
 import MemoryPanel from "@/components/dashboard/MemoryPanel";
 import GitHubPanel from "@/components/dashboard/GitHubPanel";
 import { useHealthCheck, getHealthCheckQueryKey } from "@workspace/api-client-react";
@@ -65,6 +65,8 @@ export default function Dashboard() {
           <div className="lg:col-span-4 flex flex-col gap-4">
             <ConfigPanel />
             <AttackPanel />
+            <FollowPanel />
+            <AutoDropPanel />
             <AntiAfkPanel />
             <GitHubPanel />
           </div>

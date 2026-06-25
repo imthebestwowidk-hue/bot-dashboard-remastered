@@ -25,6 +25,15 @@ export interface AntiAfk {
   enabled: boolean;
 }
 
+export interface FollowMode {
+  enabled: boolean;
+  targetPlayer?: string | null;
+}
+
+export interface AutoDrop {
+  enabled: boolean;
+}
+
 export interface BotStatus {
   connected: boolean;
   state: string;
@@ -37,6 +46,8 @@ export interface BotStatus {
   position?: Position | null;
   attackMode: AttackMode;
   antiAfk: AntiAfk;
+  followMode: FollowMode;
+  autoDrop: AutoDrop;
   ping?: number | null;
 }
 
@@ -55,6 +66,15 @@ export interface AttackModeRequest {
 }
 
 export interface AntiAfkRequest {
+  enabled: boolean;
+}
+
+export interface FollowModeRequest {
+  enabled: boolean;
+  targetPlayer?: string | null;
+}
+
+export interface AutoDropRequest {
   enabled: boolean;
 }
 

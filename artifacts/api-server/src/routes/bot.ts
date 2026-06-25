@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { ConnectBotBody, SetAttackModeBody, SetAntiAfkBody, SendChatBody } from "@workspace/api-zod";
+import { ConnectBotBody, SetAttackModeBody, SetAntiAfkBody, SendChatBody, SetFollowModeBody, SetAutoDropBody } from "@workspace/api-zod";
 import { connectBot, disconnectBot } from "../lib/botManager";
 import { botState } from "../lib/botState";
 
@@ -58,6 +58,27 @@ router.post("/bot/antiafk", (req, res) => {
   }
   botState.setAntiAfk({ enabled: parsed.data.enabled });
   res.json({ message: "Anti-AFK updated" });
+});
+
+router.post("/bot/follow", (req, res) => {
+  const parsed = SetFollowModeBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid request body" });
+    return;
+  }
+  const { enabled, targetPlayer } = parsed.data;
+  botState.setFollowMode({ enabled, targetPlayer: targetPlayer ?? null });
+  res.json({ message: "Follow mode updated" });
+});
+
+router.post("/bot/autodrop", (req, res) => {
+  const parsed = SetAutoDropBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid request body" });
+    return;
+  }
+  botState.setAutoDrop({ enabled: parsed.data.enabled });
+  res.json({ message: "Auto-drop updated" });
 });
 
 router.post("/chat", (req, res) => {

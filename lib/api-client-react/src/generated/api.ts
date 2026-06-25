@@ -22,10 +22,12 @@ import type {
 import type {
   AntiAfkRequest,
   AttackModeRequest,
+  AutoDropRequest,
   BotStatus,
   ConnectBotRequest,
   ConsoleLog,
   ErrorResponse,
+  FollowModeRequest,
   GetConsoleParams,
   HealthStatus,
   MemoryEntry,
@@ -480,6 +482,148 @@ export const useSetAntiAfk = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getSetAntiAfkMutationOptions(options));
+    }
+
+export const getSetFollowModeUrl = () => {
+
+
+
+
+  return `/api/bot/follow`
+}
+
+/**
+ * @summary Set follow mode (follow player without attacking)
+ */
+export const setFollowMode = async (followModeRequest: FollowModeRequest, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getSetFollowModeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      followModeRequest,)
+  }
+);}
+
+
+
+
+export const getSetFollowModeMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setFollowMode>>, TError,{data: BodyType<FollowModeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setFollowMode>>, TError,{data: BodyType<FollowModeRequest>}, TContext> => {
+
+const mutationKey = ['setFollowMode'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setFollowMode>>, {data: BodyType<FollowModeRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  setFollowMode(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetFollowModeMutationResult = NonNullable<Awaited<ReturnType<typeof setFollowMode>>>
+    export type SetFollowModeMutationBody = BodyType<FollowModeRequest>
+    export type SetFollowModeMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Set follow mode (follow player without attacking)
+ */
+export const useSetFollowMode = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setFollowMode>>, TError,{data: BodyType<FollowModeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setFollowMode>>,
+        TError,
+        {data: BodyType<FollowModeRequest>},
+        TContext
+      > => {
+      return useMutation(getSetFollowModeMutationOptions(options));
+    }
+
+export const getSetAutoDropUrl = () => {
+
+
+
+
+  return `/api/bot/autodrop`
+}
+
+/**
+ * @summary Set auto-drop mode (drop all items, or equip armor/elytra when off)
+ */
+export const setAutoDrop = async (autoDropRequest: AutoDropRequest, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getSetAutoDropUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      autoDropRequest,)
+  }
+);}
+
+
+
+
+export const getSetAutoDropMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setAutoDrop>>, TError,{data: BodyType<AutoDropRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setAutoDrop>>, TError,{data: BodyType<AutoDropRequest>}, TContext> => {
+
+const mutationKey = ['setAutoDrop'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setAutoDrop>>, {data: BodyType<AutoDropRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  setAutoDrop(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetAutoDropMutationResult = NonNullable<Awaited<ReturnType<typeof setAutoDrop>>>
+    export type SetAutoDropMutationBody = BodyType<AutoDropRequest>
+    export type SetAutoDropMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Set auto-drop mode (drop all items, or equip armor/elytra when off)
+ */
+export const useSetAutoDrop = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setAutoDrop>>, TError,{data: BodyType<AutoDropRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setAutoDrop>>,
+        TError,
+        {data: BodyType<AutoDropRequest>},
+        TContext
+      > => {
+      return useMutation(getSetAutoDropMutationOptions(options));
     }
 
 export const getGetConsoleUrl = (params?: GetConsoleParams,) => {

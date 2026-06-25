@@ -41,6 +41,13 @@ export const GetBotStatusResponse = zod.object({
   "antiAfk": zod.object({
   "enabled": zod.boolean()
 }),
+  "followMode": zod.object({
+  "enabled": zod.boolean(),
+  "targetPlayer": zod.string().nullish()
+}),
+  "autoDrop": zod.object({
+  "enabled": zod.boolean()
+}),
   "ping": zod.number().nullish()
 })
 
@@ -93,6 +100,31 @@ export const SetAntiAfkBody = zod.object({
 })
 
 export const SetAntiAfkResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Set follow mode (follow player without attacking)
+ */
+export const SetFollowModeBody = zod.object({
+  "enabled": zod.boolean(),
+  "targetPlayer": zod.string().nullish()
+})
+
+export const SetFollowModeResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Set auto-drop mode (drop all items, or equip armor/elytra when off)
+ */
+export const SetAutoDropBody = zod.object({
+  "enabled": zod.boolean()
+})
+
+export const SetAutoDropResponse = zod.object({
   "message": zod.string()
 })
 
