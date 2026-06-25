@@ -41,9 +41,9 @@ router.post("/github/push", async (req, res) => {
     await execAsync(`git -C "${WORKSPACE}" add -A`);
     await execAsync(`git -C "${WORKSPACE}" commit -m "BOT_CTRL: sync" --allow-empty`);
 
-    // Push — token is in the URL, never logged
+    // Push with --force so existing files in the repo are always replaced
     const { stdout, stderr } = await execAsync(
-      `git -C "${WORKSPACE}" push "${pushUrl}" HEAD:refs/heads/${branch}`,
+      `git -C "${WORKSPACE}" push --force "${pushUrl}" HEAD:refs/heads/${branch}`,
       { timeout: 30000 }
     );
 
